@@ -115,7 +115,14 @@ class UpdateCSVView(BaseView):
         try:
             if self.csv_data is not None and self.temp_csv_path:
                 # Save without index and preserve all values as text (no scientific notation)
-                self.csv_data.to_csv(self.temp_csv_path, index=False, encoding='utf-8', quoting=1)
+                # Use quoting=csv.QUOTE_MINIMAL (0) to only quote when necessary
+                import csv
+                self.csv_data.to_csv(
+                    self.temp_csv_path, 
+                    index=False, 
+                    encoding='utf-8', 
+                    quoting=csv.QUOTE_MINIMAL
+                )
                 self.logger.info(f"Saved CSV data to: {self.temp_csv_path}")
                 return True
             return False
