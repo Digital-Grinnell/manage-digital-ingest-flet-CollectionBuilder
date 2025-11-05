@@ -302,7 +302,6 @@ class UpdateCSVView(BaseView):
                 new_row['file_name_1'] = temp_csv_filename
                 
                 # Append the new row to the DataFrame
-                import pandas as pd
                 new_row_df = pd.DataFrame([new_row])
                 self.csv_data = pd.concat([self.csv_data, new_row_df], ignore_index=True)
                 
@@ -630,7 +629,6 @@ class UpdateCSVView(BaseView):
             new_row['file_name_1'] = temp_csv_filename
             
             # Append the new row to the DataFrame
-            import pandas as pd
             new_row_df = pd.DataFrame([new_row])
             self.csv_data = pd.concat([self.csv_data, new_row_df], ignore_index=True)
             
