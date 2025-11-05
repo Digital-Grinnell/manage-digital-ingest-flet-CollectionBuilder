@@ -1,0 +1,8 @@
+{
+  "name": "manage-digital-ingest-flet-multi-page",
+  "version": "0.1.0",
+  "author": "Mark A. McFate",
+  "description": null,
+  "python_version": "3.12",
+  "flet_version": "0.28.2"
+}
