@@ -215,12 +215,14 @@ class MDIApplication:
         page.title = "Manage Digital Ingest: CollectionBuilder Edition"
         
         # Load persistent settings from persistent storage
+        window_width = 920   # Default value (15% wider than standard 800px)
         window_height = 700  # Default value
         theme_mode = "Light"  # Default theme
         persistent_data = {}
         try:
             with open("_data/persistent.json", "r", encoding="utf-8") as f:
                 persistent_data = utils.json.load(f)
+                window_width = persistent_data.get("window-width", 920)
                 window_height = persistent_data.get("window-height", 700)
                 theme_mode = persistent_data.get("selected_theme", "Light")
         except Exception as e:
@@ -248,6 +250,8 @@ class MDIApplication:
             self.logger.info("Restored preserved session data")
         
         # Set window dimensions
+        page.window.width = window_width
+        page.window.min_width = 800
         page.window.height = window_height
         page.window.min_height = 500
         
