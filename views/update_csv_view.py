@@ -165,7 +165,7 @@ class UpdateCSVView(BaseView):
             csv_filenames_for_matched = self.page.session.get("csv_filenames_for_matched") or []
             temp_csv_filename = self.page.session.get("temp_csv_filename") or ""
             original_csv_path = self.page.session.get("selected_csv_file") or ""
-            current_mode = self.page.session.get("selected_mode") or "Alma"
+            current_mode = self.page.session.get("selected_mode") or "CollectionBuilder"
             
             if self.csv_data is None:
                 self.logger.warning("CSV data not loaded")
@@ -229,6 +229,18 @@ class UpdateCSVView(BaseView):
                     if mask.any():
                         row_idx = self.csv_data[mask].index[0]
                         self.logger.info(f"Found match at row index: {row_idx}")
+                        
+                        # Check if this is a compound object or multiple display template FIRST
+                        # These have no object content of their own, so we should skip them entirely
+                        display_template = ""
+                        if 'display_template' in self.csv_data.columns:
+                            display_template = str(self.csv_data.at[row_idx, 'display_template']).strip().lower()
+                        
+                        is_compound_or_multiple = display_template in ['compound_object', 'multiple']
+                        
+                        if is_compound_or_multiple:
+                            self.logger.info(f"Row {row_idx} has display_template='{display_template}' - skipping this row entirely (no object content)")
+                            continue  # Skip to next file
                         
                         if current_mode == "CollectionBuilder":
                             # In CollectionBuilder mode, populate Azure blob URLs
@@ -310,10 +322,6 @@ class UpdateCSVView(BaseView):
                                 self.logger.warning("image_thumb column not found in CSV!")
                             
                             self.logger.info(f"Updated CollectionBuilder URLs for: '{csv_filename}'")
-                        else:
-                            # In Alma mode, just replace with sanitized filename
-                            self.csv_data.at[row_idx, column_name] = sanitized_filename
-                            self.logger.info(f"Updated CSV: '{csv_filename}' -> '{sanitized_filename}'")
                         
                         updates += 1
                     else:
@@ -321,199 +329,14 @@ class UpdateCSVView(BaseView):
             else:
                 self.logger.warning(f"Missing data - temp_file_info: {temp_file_info is not None}, csv_filenames_for_matched: {csv_filenames_for_matched is not None}")
             
-            # Step 2: Append a new row for the CSV file itself (Alma mode only)
-            if current_mode == "Alma":
-                # Generate unique ID
-                unique_id = utils.generate_unique_id(self.page)
-                
-                # Create new row with all empty values first
-                new_row = {col: '' for col in self.csv_data.columns}
-                
-                # Extract numeric portion for Handle URL (e.g., "dg_1234567890" -> "1234567890")
-                numeric_part = unique_id.split('_')[-1] if '_' in unique_id else unique_id
-                handle_url = f"http://hdl.handle.net/11084/{numeric_part}"
-                
-                # Populate specific columns
-                new_row['originating_system_id'] = unique_id
-                new_row['dc:identifier'] = handle_url  # Use Handle URL format in Alma mode
-                new_row['collection_id'] = '81342586470004641'  # CSV file record gets different collection
-                new_row['dc:type'] = 'Dataset'  # CSV file is a dataset
-                
-                # Use the sanitized temp CSV filename for both dc:title and file_name_1
-                new_row['dc:title'] = temp_csv_filename
-                new_row['file_name_1'] = temp_csv_filename
-                
-                # Append the new row to the DataFrame
-                new_row_df = pd.DataFrame([new_row])
-                self.csv_data = pd.concat([self.csv_data, new_row_df], ignore_index=True)
-                
-                # Also update the original to match (so comparison logic doesn't break)
-                self.csv_data_original = pd.concat([self.csv_data_original, new_row_df], ignore_index=True)
-                
-                self.logger.info(f"Appended new row with ID: {unique_id}")
-            
-            # Step 3: Fill empty originating_system_id cells with unique IDs (Alma mode only)
-            if current_mode == "Alma":
-                filled_ids = 0
-                if 'originating_system_id' in self.csv_data.columns:
-                    for idx in range(len(self.csv_data)):
-                        cell_value = self.csv_data.at[idx, 'originating_system_id']
-                        # Check if empty (empty string, None, or NaN)
-                        if pd.isna(cell_value) or str(cell_value).strip() == '':
-                            new_id = utils.generate_unique_id(self.page)
-                            self.csv_data.at[idx, 'originating_system_id'] = new_id
-                            # Also update dc:identifier if it exists and is empty
-                            if 'dc:identifier' in self.csv_data.columns:
-                                dc_id_value = self.csv_data.at[idx, 'dc:identifier']
-                                if pd.isna(dc_id_value) or str(dc_id_value).strip() == '':
-                                    # In Alma mode, use Handle URL format
-                                    numeric_part = new_id.split('_')[-1] if '_' in new_id else new_id
-                                    self.csv_data.at[idx, 'dc:identifier'] = f"http://hdl.handle.net/11084/{numeric_part}"
-                            filled_ids += 1
-                            self.logger.info(f"Generated ID {new_id} for row {idx}")
-                    if filled_ids > 0:
-                        self.logger.info(f"Filled {filled_ids} empty originating_system_id cell(s)")
-                else:
-                    self.logger.warning("originating_system_id column not found in CSV")
-            
-            # Step 3.5: In Alma mode, convert dc:identifier to Handle URL format
-            if current_mode == "Alma" and 'dc:identifier' in self.csv_data.columns and 'originating_system_id' in self.csv_data.columns:
-                handle_count = 0
-                for idx in range(len(self.csv_data)):
-                    orig_id = self.csv_data.at[idx, 'originating_system_id']
-                    # Extract numeric portion from originating_system_id (e.g., "dg_1234567890" -> "1234567890")
-                    if not pd.isna(orig_id) and str(orig_id).strip() != '':
-                        orig_id_str = str(orig_id).strip()
-                        # Extract numeric part (everything after last underscore or the whole thing if no underscore)
-                        if '_' in orig_id_str:
-                            numeric_part = orig_id_str.split('_')[-1]
-                        else:
-                            numeric_part = orig_id_str
-                        
-                        # Only proceed if we have a numeric part
-                        if numeric_part.isdigit():
-                            handle_url = f"http://hdl.handle.net/11084/{numeric_part}"
-                            self.csv_data.at[idx, 'dc:identifier'] = handle_url
-                            handle_count += 1
-                
-                if handle_count > 0:
-                    self.logger.info(f"Set {handle_count} dc:identifier cell(s) to Handle URL format")
-            
-            # Step 3.6: Fill collection_id cells with Pending Review collection (Alma mode only)
-            filled_collections = 0
-            if current_mode == "Alma" and 'collection_id' in self.csv_data.columns:
-                pending_review_id = '81313013130004641'  # Pending Review collection
-                for idx in range(len(self.csv_data)):
-                    cell_value = self.csv_data.at[idx, 'collection_id']
-                    # Check if empty (empty string, None, or NaN)
-                    # if pd.isna(cell_value) or str(cell_value).strip() == '':   # This logic was not right, the collection_id should ALWAYS be 'pending review'!
-                    if True:
-                        self.csv_data.at[idx, 'collection_id'] = pending_review_id
-                        filled_collections += 1
-                if filled_collections > 0:
-                    self.logger.info(f"Filled {filled_collections} empty collection_id cell(s) with Pending Review collection")
-            
-            # Step 3.65: Process Alma compound parent/child relationships
-            if current_mode == "Alma" and 'compoundrelationship' in self.csv_data.columns:
-                compound_updates = 0
-                self.logger.info("Processing Alma compound parent/child relationships...")
-                
-                idx = 0
-                while idx < len(self.csv_data):
-                    compound = str(self.csv_data.at[idx, 'compoundrelationship']).strip()
-                    
-                    # Check if this is a parent
-                    if compound.startswith('parent'):
-                        parent_idx = idx
-                        parent_pid = self.csv_data.at[parent_idx, 'originating_system_id']
-                        self.logger.info(f"Found parent at row {idx} with originating_system_id: {parent_pid}")
-                        
-                        # Set parent's group_id to its own originating_system_id
-                        if 'group_id' in self.csv_data.columns:
-                            self.csv_data.at[parent_idx, 'group_id'] = parent_pid
-                            self.logger.info(f"  Set parent group_id to: {parent_pid}")
-                        
-                        # Initialize parent's TOC and dginfo
-                        toc = ""
-                        dginfo_list = []
-                        
-                        # Count and process children
-                        child_count = 0
-                        child_idx = idx + 1
-                        
-                        # Loop through following rows to find children
-                        while child_idx < len(self.csv_data):
-                            child_compound = str(self.csv_data.at[child_idx, 'compoundrelationship']).strip()
-                            
-                            if not child_compound.startswith('child'):
-                                break  # End of children
-                            
-                            child_count += 1
-                            
-                            # Get child information
-                            child_title = str(self.csv_data.at[child_idx, 'dc:title']) if 'dc:title' in self.csv_data.columns else ''
-                            child_type = str(self.csv_data.at[child_idx, 'dc:type']) if 'dc:type' in self.csv_data.columns else ''
-                            
-                            # Build TOC entry
-                            if child_title and child_type:
-                                toc += f"{child_title} ({child_type}) | "
-                            elif child_title:
-                                toc += f"{child_title} | "
-                            
-                            # Set child's group_id to parent's originating_system_id
-                            if 'group_id' in self.csv_data.columns:
-                                self.csv_data.at[child_idx, 'group_id'] = parent_pid
-                            
-                            # Set child rep_label and rep_public_note
-                            if 'rep_label' in self.csv_data.columns:
-                                self.csv_data.at[child_idx, 'rep_label'] = child_title
-                            if 'rep_public_note' in self.csv_data.columns:
-                                self.csv_data.at[child_idx, 'rep_public_note'] = child_type
-                            
-                            self.logger.info(f"  Processed child at row {child_idx}: {child_title}")
-                            child_idx += 1
-                        
-                        # Validate we have at least 2 children
-                        if child_count < 2:
-                            error_msg = f"*ERROR* Parent at row {parent_idx} has only {child_count} child(ren), need at least 2!"
-                            self.logger.error(error_msg)
-                            if 'mms_id' in self.csv_data.columns:
-                                self.csv_data.at[parent_idx, 'mms_id'] = "*ERROR* Too few children!"
-                        else:
-                            # Update parent record
-                            if 'dcterms:tableOfContents' in self.csv_data.columns:
-                                self.csv_data.at[parent_idx, 'dcterms:tableOfContents'] = toc.rstrip(' | ')
-                                self.logger.info(f"  Set parent TOC: {toc.rstrip(' | ')}")
-                            
-                            # Set parent dc:type to 'compound'
-                            if 'dc:type' in self.csv_data.columns:
-                                self.csv_data.at[parent_idx, 'dc:type'] = 'compound'
-                                self.logger.info(f"  Set parent dc:type to 'compound'")
-                            
-                            # Clear parent dcterms:type.dcterms:DCMIType
-                            if 'dcterms:type.dcterms:DCMIType' in self.csv_data.columns:
-                                self.csv_data.at[parent_idx, 'dcterms:type.dcterms:DCMIType'] = ''
-                            
-                            compound_updates += 1
-                        
-                        # Skip past the children we just processed
-                        idx = child_idx - 1
-                    
-                    idx += 1
-                
-                if compound_updates > 0:
-                    self.logger.info(f"Processed {compound_updates} compound parent/child group(s)")
-                else:
-                    self.logger.info("No compound parent/child relationships found")
-            
             # Step 3.7: Handle parent/child relationships (CollectionBuilder mode only)
-            # Copy image_small and image_thumb from first child to parent
+            # Copy image_small and image_thumb from first child to parent for compound_object and multiple display templates
             if current_mode == "CollectionBuilder":
                 parent_child_updates = 0
                 
                 # Check if required columns exist
                 if 'objectid' in self.csv_data.columns and 'parentid' in self.csv_data.columns:
-                    self.logger.info("Processing parent/child relationships...")
+                    self.logger.info("Processing parent/child relationships for compound_object and multiple display templates...")
                     
                     # Find all parent records (rows where parentid is empty/NaN)
                     parents_mask = self.csv_data['parentid'].isna() | (self.csv_data['parentid'] == '')
@@ -524,6 +347,17 @@ class UpdateCSVView(BaseView):
                         
                         if pd.isna(parent_objectid) or str(parent_objectid).strip() == '':
                             continue
+                        
+                        # Check if this parent has compound_object or multiple display_template
+                        display_template = ""
+                        if 'display_template' in self.csv_data.columns:
+                            display_template = str(self.csv_data.at[parent_idx, 'display_template']).strip().lower()
+                        
+                        # Only process if display_template is compound_object or multiple
+                        if display_template not in ['compound_object', 'multiple']:
+                            continue
+                        
+                        self.logger.info(f"Processing parent with display_template='{display_template}', objectid={parent_objectid}")
                             
                         # Find children (rows where parentid matches this parent's objectid)
                         children_mask = self.csv_data['parentid'] == parent_objectid
@@ -534,21 +368,35 @@ class UpdateCSVView(BaseView):
                             first_child_idx = children_indices[0]
                             
                             # Copy image_small and image_thumb from first child to parent
+                            # ONLY if parent's fields are empty
                             updates_made = False
                             
                             if 'image_small' in self.csv_data.columns:
-                                child_small = self.csv_data.at[first_child_idx, 'image_small']
-                                if not pd.isna(child_small) and str(child_small).strip() != '':
-                                    self.csv_data.at[parent_idx, 'image_small'] = child_small
-                                    updates_made = True
-                                    self.logger.info(f"Copied image_small from child to parent (objectid={parent_objectid})")
+                                parent_small = self.csv_data.at[parent_idx, 'image_small']
+                                parent_small_empty = pd.isna(parent_small) or str(parent_small).strip() == ''
+                                
+                                if parent_small_empty:
+                                    child_small = self.csv_data.at[first_child_idx, 'image_small']
+                                    if not pd.isna(child_small) and str(child_small).strip() != '':
+                                        self.csv_data.at[parent_idx, 'image_small'] = child_small
+                                        updates_made = True
+                                        self.logger.info(f"Copied image_small from child to parent (objectid={parent_objectid})")
+                                else:
+                                    self.logger.info(f"Skipped image_small copy - parent already has value (objectid={parent_objectid})")
                             
                             if 'image_thumb' in self.csv_data.columns:
-                                child_thumb = self.csv_data.at[first_child_idx, 'image_thumb']
-                                if not pd.isna(child_thumb) and str(child_thumb).strip() != '':
-                                    self.csv_data.at[parent_idx, 'image_thumb'] = child_thumb
-                                    updates_made = True
-                                    self.logger.info(f"Copied image_thumb from child to parent (objectid={parent_objectid})")
+                                parent_thumb = self.csv_data.at[parent_idx, 'image_thumb']
+                                parent_thumb_empty = pd.isna(parent_thumb) or str(parent_thumb).strip() == ''
+                                
+                                if parent_thumb_empty:
+                                    child_thumb = self.csv_data.at[first_child_idx, 'image_thumb']
+                                    if not pd.isna(child_thumb) and str(child_thumb).strip() != '':
+                                        self.csv_data.at[parent_idx, 'image_thumb'] = child_thumb
+                                        updates_made = True
+                                        self.logger.info(f"Copied image_thumb from child to parent (objectid={parent_objectid})")
+                                else:
+                                    self.logger.info(f"Skipped image_thumb copy - parent already has value (objectid={parent_objectid})")
+
                             
                             if updates_made:
                                 parent_child_updates += 1
@@ -563,30 +411,9 @@ class UpdateCSVView(BaseView):
                     if 'parentid' not in self.csv_data.columns:
                         self.logger.warning("parentid column not found in CSV - skipping parent/child processing")
             
-            # Step 4: Populate dginfo field for ALL rows with temp CSV filename (Alma mode only)
-            if current_mode == "Alma":
-                if 'dginfo' in self.csv_data.columns:
-                    self.csv_data['dginfo'] = temp_csv_filename
-                    # Also update original so dginfo doesn't show as changed
-                    self.csv_data_original['dginfo'] = temp_csv_filename
-                    self.logger.info(f"Set dginfo field to '{temp_csv_filename}' for all {len(self.csv_data)} rows")
-                else:
-                    self.logger.warning("dginfo column not found in CSV")
-            
             # Save the updated CSV
             self.save_csv_data()
             self.edits_applied = True
-            
-            # Step 5: In Alma mode, create a copy named values.csv in temp directory
-            if current_mode == "Alma":
-                temp_dir = self.page.session.get("temp_directory")
-                if temp_dir and self.temp_csv_path:
-                    try:
-                        values_csv_path = os.path.join(temp_dir, "values.csv")
-                        shutil.copy2(self.temp_csv_path, values_csv_path)
-                        self.logger.info(f"Created values.csv copy in temp directory: {values_csv_path}")
-                    except Exception as e:
-                        self.logger.error(f"Error creating values.csv copy: {e}")
             
             # Update the data table display
             if self.data_table:
@@ -598,19 +425,6 @@ class UpdateCSVView(BaseView):
             message_parts = []
             if updates > 0:
                 message_parts.append(f"Updated {updates} filename(s)")
-            
-            # Only mention CSV row addition in Alma mode
-            if current_mode == "Alma":
-                message_parts.append("Added CSV row with unique ID")
-            
-            if current_mode == "Alma" and filled_ids > 0:
-                message_parts.append(f"Generated {filled_ids} ID(s)")
-            if current_mode == "Alma" and filled_collections > 0:
-                message_parts.append(f"Set {filled_collections} collection(s) to Pending Review")
-            
-            # Only mention dginfo in Alma mode
-            if current_mode == "Alma":
-                message_parts.append(f"Set dginfo for all rows")
             
             self.logger.info("Apply All Updates completed successfully")
             self.page.snack_bar = ft.SnackBar(

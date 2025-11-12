@@ -371,14 +371,11 @@ class DerivativesView(BaseView):
         colors = self.get_theme_colors()
         
         # Get current mode and files from session
-        current_mode = self.page.session.get("selected_mode")
         selected_files = self.page.session.get("selected_file_paths") or []
         total_files = len(selected_files)
         
         # Prepare status information controls
         status_info_controls = [
-            ft.Text(f"Current Mode: {current_mode or 'None selected'}", 
-                   size=16, weight=ft.FontWeight.BOLD, color=colors['container_text']),
             ft.Text(f"Selected Files: {total_files}", 
                    size=16, weight=ft.FontWeight.BOLD, color=colors['container_text'])
         ]
@@ -386,9 +383,7 @@ class DerivativesView(BaseView):
         status_info_controls.extend([
             ft.Container(height=5),
             ft.Text("Derivative Types:", size=14, weight=ft.FontWeight.BOLD, color=colors['container_text']),
-            ft.Text("• CollectionBuilder: _TN.jpg (400x400) + _SMALL.jpg (800x800)", 
-                   size=12, color=colors['container_text']),
-            ft.Text("• Alma: _TN.jpg (200x200) thumbnail", 
+            ft.Text("• _TN.jpg (400x400) thumbnail + _SMALL.jpg (800x800) small image", 
                    size=12, color=colors['container_text'])
         ])
         
@@ -402,19 +397,14 @@ class DerivativesView(BaseView):
         )
         
         # Add initial message
-        if not current_mode:
-            self.log_view.controls.append(
-                ft.Text("⚠️ Please select a mode in Settings before creating derivatives.",
-                       size=12, color=colors['secondary_text'])
-            )
-        elif total_files == 0:
+        if total_files == 0:
             self.log_view.controls.append(
                 ft.Text("⚠️ Please select files in File Selector before creating derivatives.",
                        size=12, color=colors['secondary_text'])
             )
         else:
             self.log_view.controls.append(
-                ft.Text(f"Ready to create derivatives for {total_files} files in {current_mode} mode.",
+                ft.Text(f"Ready to create derivatives for {total_files} files.",
                        size=12, color=colors['primary_text'])
             )
         
@@ -441,7 +431,7 @@ class DerivativesView(BaseView):
             "Create Derivatives",
             icon=ft.Icons.AUTO_FIX_HIGH,
             on_click=on_create_derivatives_click,
-            disabled=(not current_mode or total_files == 0)
+            disabled=(total_files == 0)
         )
         
         clear_button = ft.ElevatedButton(
