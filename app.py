@@ -147,7 +147,7 @@ class MDIApplication:
         return ft.AppBar(
             leading=ft.Container(
                 content=ft.Image(
-                    src="assets/cb_icon.png",
+                    src="assets/mdi_icon.png",
                     width=32,
                     height=32,
                     fit=ft.ImageFit.CONTAIN
@@ -265,7 +265,7 @@ class MDIApplication:
         
         # Set custom window icon
         import os
-        icon_path = os.path.join(os.path.dirname(__file__), "assets", "cb_icon.png")
+        icon_path = os.path.join(os.path.dirname(__file__), "assets", "mdi_icon.png")
         if os.path.exists(icon_path):
             page.window.icon = icon_path
             self.logger.info(f"Set custom window icon: {icon_path}")

@@ -1,39 +1,46 @@
-# CollectionBuilder Custom Icon
+# CollectionBuilder + MDI Custom Icons
 
 ## Files Created
 
-1. **assets/cb_icon.svg** - Vector SVG version (512x512)
-2. **assets/cb_icon.png** - Raster PNG version (512x512, ~7KB)
+### Main Application Icon (MDI Icon)
+1. **assets/mdi_icon.png** - Main app icon (256x256) - CollectionBuilder logo with "MDI" badge
+2. **assets/favicon-256.png** - High quality favicon (256x256)
+3. **assets/favicon-128.png** - Standard favicon (128x128)
+4. **assets/favicon-64.png** - Smaller favicon (64x64)
+5. **assets/favicon-32.png** - Classic favicon (32x32)
+6. **assets/favicon.ico** - Windows ICO format (32x32)
+
+### Original Files
+7. **assets/cb-logo-original.png** - Original CollectionBuilder logo from website
+8. **assets/cb_icon.svg** - Vector SVG version (512x512) - previous custom icon
+9. **assets/cb_icon.png** - Raster PNG version (512x512) - previous custom icon
 
 ## Design Elements
 
-The icon features:
+The MDI icon features:
 
-- **Blue circular background** (#2563eb) - Represents the digital/tech nature of the application
-- **White document/file** - Central element representing metadata and CSV files
-  - Folded corner detail for depth
-  - Horizontal lines suggesting text/metadata
-  - Image placeholder representing digital objects
-- **Green "CB" badge** (#10b981) - CollectionBuilder branding in lower right
-  - Bold white "CB" text
+- **CollectionBuilder Logo** - Official CB logo from https://collectionbuilder.github.io/
+- **Blue "MDI" badge** (#2563eb) - "Manage Digital Ingest" branding in bottom right
+  - Bold white "MDI" text
   - Rounded rectangle background
+  - Positioned in lower right corner for visibility
 
 ## Usage in Application
 
 The icon is used in two places:
 
-1. **Window Icon/Favicon** (app.py line ~257)
+1. **Window Icon/Favicon** (app.py)
    ```python
-   page.window.icon = "assets/cb_icon.png"
+   page.window.icon = "assets/mdi_icon.png"
    ```
    - Appears in the window title bar
    - Appears in the taskbar/dock
    - Appears in alt-tab switcher
 
-2. **AppBar Leading Icon** (app.py line ~148)
+2. **AppBar Leading Icon** (app.py)
    ```python
    leading=ft.Container(
-       content=ft.Image(src="assets/cb_icon.png", ...)
+       content=ft.Image(src="assets/mdi_icon.png", ...)
    )
    ```
    - Appears in the top-left of the application
@@ -41,20 +48,24 @@ The icon is used in two places:
 
 ## Technical Details
 
-- **Format**: PNG (RGBA) and SVG
-- **Dimensions**: 512x512 pixels
+- **Format**: PNG (RGBA) and ICO
+- **Dimensions**: Multiple sizes (32x32 to 256x256)
 - **Color Profile**: sRGB
 - **Transparency**: Yes (RGBA)
-- **File Size**: ~7KB (PNG)
+- **File Sizes**: 
+  - favicon.ico: ~5KB
+  - favicon-32.png: ~2KB
+  - favicon-64.png: ~6KB
+  - favicon-128.png: ~16KB
+  - favicon-256.png: ~31KB
+  - mdi_icon.png: ~31KB
 
-## Customization
+## Source
 
-To customize the icon:
-
-1. **Change colors**: Edit the RGB values in the generation code or SVG
-2. **Change badge text**: Modify the "CB" text to any 1-3 character string
-3. **Resize**: The PNG can be regenerated at any size by changing the dimensions
+- Original CollectionBuilder logo: https://collectionbuilder.github.io/images/logo/cb-logo-solid-vgold-transparent.png
+- License: CollectionBuilder is open source (MIT License)
 
 ## Credits
 
-Created using Python Pillow library with custom drawing commands.
+Created using Python Pillow library with the official CollectionBuilder logo and custom "MDI" badge overlay.
+
