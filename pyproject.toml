@@ -9,17 +9,10 @@ authors = [
 ]
 dependencies = [
     "flet>=0.28.2",
-    "pandas>=2.3.3",
-    "openpyxl>=3.1.5",
-    "Pillow>=11.0.0",
-    "PyMuPDF>=1.24.14",
-    "azure-storage-blob>=12.27.0",
-    "azure-identity>=1.25.1",
-    "python-dotenv>=1.1.1",
-    "fastapi>=0.118.3",
-    "cookiecutter>=2.6.0",
-    "fuzzywuzzy>=0.18.0",
 ]
+
+# Note: For web builds, many packages are not available in Pyodide.
+# Full dependencies are in python-requirements.txt for desktop/development use.
 
 [tool.flet]
 org = "edu.grinnell.digital"

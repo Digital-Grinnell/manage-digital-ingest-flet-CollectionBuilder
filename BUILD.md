@@ -7,6 +7,8 @@ This document explains how to build standalone executables for the Manage Digita
 - Python 3.9 or higher
 - Virtual environment activated (`.venv`)
 - All dependencies installed from `python-requirements.txt`
+- **For macOS builds**: Xcode Command Line Tools (`xcode-select --install`)
+- **For web builds**: No additional requirements!
 
 ## Icon Configuration
 
@@ -23,9 +25,31 @@ All icon files are located in the `assets/` directory and feature the official C
 
 ## Building for Different Platforms
 
-### macOS (current platform)
+### Web Application (Recommended - No Xcode Required!)
 
-Build a standalone macOS application:
+Build a web application that runs in any browser:
+
+```bash
+.venv/bin/flet build web
+```
+
+The built web app will be in `build/web/`. You can serve it locally with:
+
+```bash
+python -m http.server -d build/web
+```
+
+Then open http://localhost:8000 in your browser.
+
+### macOS (Requires Xcode Command Line Tools)
+
+First, ensure Xcode Command Line Tools are installed:
+
+```bash
+xcode-select --install
+```
+
+Then build a standalone macOS application:
 
 ```bash
 .venv/bin/flet build macos
@@ -124,6 +148,29 @@ The current icons are 256x256 PNG files with transparent backgrounds, featuring:
 - Professional appearance suitable for all platforms
 
 ## Troubleshooting
+
+### Xcode Command Line Tools Error (macOS)
+
+If you see an error like:
+```
+xcrun: error: unable to find utility "xcodebuild", not a developer tool or in PATH
+```
+
+This means Xcode Command Line Tools are not properly installed. Fix it with:
+
+```bash
+# Install or reinstall Command Line Tools
+xcode-select --install
+
+# If that doesn't work, reset the path:
+sudo xcode-select --reset
+xcode-select --install
+```
+
+**Alternative**: Build for web instead, which doesn't require Xcode:
+```bash
+.venv/bin/flet build web
+```
 
 ### Flutter SDK Not Found
 

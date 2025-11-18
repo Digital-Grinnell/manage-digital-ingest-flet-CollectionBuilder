@@ -43,19 +43,35 @@ When you run `.venv/bin/flet build <platform>`:
 
 ## Building the Application
 
-### For macOS (your current platform):
+### ⚠️ macOS Build Requires Xcode
+Building for macOS requires Xcode Command Line Tools:
 ```bash
+# Install Xcode Command Line Tools first (if not installed):
+xcode-select --install
+
+# Then build for macOS:
 .venv/bin/flet build macos
 ```
+
+### ✅ Easiest Option: Web Build (No Xcode Required)
+Web builds don't require Xcode and work on any platform:
+```bash
+.venv/bin/flet build web
+```
+
+The web app will be in `build/web/` and can be:
+- Served locally with `python -m http.server -d build/web`
+- Deployed to any web hosting service
+- Run in any modern browser
 
 ### For Windows (requires Windows or WSL):
 ```bash
 .venv/bin/flet build windows
 ```
 
-### For Web deployment:
+### For Linux:
 ```bash
-.venv/bin/flet build web
+.venv/bin/flet build linux
 ```
 
 The built applications will have your custom MDI icon properly embedded!
