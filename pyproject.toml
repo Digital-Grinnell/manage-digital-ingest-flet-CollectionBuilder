@@ -37,6 +37,16 @@ copyright = "Copyright (C) 2025 Digital Grinnell"
 [tool.flet.app]
 path = "."
 module = "app"
+exclude = [
+    ".venv",
+    "venv",
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    ".DS_Store",
+    "build",
+    "*.log"
+]
 
 # Pin to compatible webview version to avoid Dart 3.9 language errors
 [tool.flet.flutter.dependencies]
