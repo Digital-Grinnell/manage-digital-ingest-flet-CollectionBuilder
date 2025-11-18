@@ -1,7 +1,7 @@
 [project]
-name = "manage-digital-ingest"
+name = "MDI"
 version = "1.0.0"
-description = "Manage Digital Ingest - CollectionBuilder metadata and derivative management tool"
+description = "MDI - Manage Digital Ingest for CollectionBuilder metadata and derivative management"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
@@ -9,6 +9,20 @@ authors = [
 ]
 dependencies = [
     "flet>=0.28.2",
+    "python-dotenv>=1.0.0",
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+    "Pillow>=10.0.0",
+    "PyMuPDF>=1.24.0",
+    "azure-storage-blob>=12.0.0",
+    "azure-identity>=1.0.0",
+    "cookiecutter>=2.0.0",
+    "python-slugify>=8.0.0",
+    "qrcode>=7.0.0",
+    "PyYAML>=6.0.0",
+    "requests>=2.31.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
 ]
 
 # Note: For web builds, many packages are not available in Pyodide.
@@ -24,10 +38,9 @@ copyright = "Copyright (C) 2025 Digital Grinnell"
 path = "."
 module = "app"
 
-# Exclude packages that cause Android/iOS build issues
+# Pin to compatible webview version to avoid Dart 3.9 language errors
 [tool.flet.flutter.dependencies]
-webview_flutter_android = { git = { url = "https://github.com/flutter/packages", path = "packages/webview_flutter/webview_flutter_android", ref = "main" } }
-webview_flutter_wkwebview = { git = { url = "https://github.com/flutter/packages", path = "packages/webview_flutter/webview_flutter_wkwebview", ref = "main" } }
+webview_flutter_android = "3.16.0"
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]
