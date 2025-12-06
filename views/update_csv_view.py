@@ -171,8 +171,25 @@ class UpdateCSVView(BaseView):
                 if quote_fixes > 0:
                     self.logger.info(f"Fixed {quote_fixes} cell(s) with embedded double quotes")
                 
+                # Replace straight apostrophes with curly apostrophes for better CSV compatibility
+                apostrophe_fixes = 0
+                for col in self.csv_data.columns:
+                    if self.csv_data[col].dtype == 'object':
+                        mask = self.csv_data[col].astype(str).str.contains("'", na=False)
+                        if mask.any():
+                            for idx in self.csv_data[mask].index:
+                                original = str(self.csv_data.at[idx, col])
+                                if original and original != 'nan' and "'" in original:
+                                    fixed = original.replace("'", "'")
+                                    self.csv_data.at[idx, col] = fixed
+                                    apostrophe_fixes += 1
+                
+                if apostrophe_fixes > 0:
+                    self.logger.info(f"Converted {apostrophe_fixes} cell(s) with straight apostrophes to curly apostrophes")
+                
                 # Save without index and preserve all values as text (no scientific notation)
                 # Use quoting=csv.QUOTE_MINIMAL to only quote when necessary
+                # Always use UTF-8 encoding (no BOM)
                 import csv
                 self.csv_data.to_csv(
                     self.temp_csv_path, 
