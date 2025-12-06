@@ -50,6 +50,44 @@ class InstructionsView(BaseView):
             # Remove .csv extension for metadata key
             metadata_name = temp_csv_filename.replace(".csv", "")
             
+            # Get transcript CSV files from session
+            transcript_csv_files = self.page.session.get("transcript_csv_files") or []
+            
+            # Build transcript copy commands
+            transcript_commands = ""
+            if transcript_csv_files:
+                # Get the TRANSCRIPTS directory from session
+                transcript_dir = self.page.session.get("temp_transcripts_directory")
+                if not transcript_dir:
+                    # Fallback: construct from temp_dir
+                    transcript_dir = os.path.join(temp_dir, "TRANSCRIPTS")
+                
+                transcript_commands = f"""
+# Create _data/transcripts directory if it doesn't exist
+if [ ! -d "_data/transcripts" ]; then
+    echo "Creating _data/transcripts directory..."
+    mkdir -p _data/transcripts
+fi
+
+# Copy transcript CSV files (following symbolic links to get actual files)
+echo ""
+echo "Copying transcript CSV files to _data/transcripts/..."
+TRANSCRIPT_COUNT=0
+for csv_file in "{transcript_dir}"/*.csv; do
+    if [ -f "$csv_file" ] || [ -L "$csv_file" ]; then
+        # Use -L flag to follow symbolic links and copy the actual file
+        cp -L "$csv_file" "_data/transcripts/"
+        if [ $? -eq 0 ]; then
+            TRANSCRIPT_COUNT=$((TRANSCRIPT_COUNT + 1))
+            echo "✓ Copied: $(basename "$csv_file")"
+        else
+            echo "✗ Failed to copy: $(basename "$csv_file")"
+        fi
+    fi
+done
+echo "✓ Copied $TRANSCRIPT_COUNT transcript CSV file(s) to _data/transcripts/"
+"""
+            
             # Generate the bash script
             script_content = f"""#!/bin/bash
 # CollectionBuilder Deployment Script
@@ -89,7 +127,7 @@ if [ $? -eq 0 ]; then
 else
     echo "✗ Failed to copy CSV file"
     exit 1
-fi
+fi{transcript_commands}
 
 # Update _config.yml
 echo ""
@@ -266,6 +304,12 @@ echo ""
                             "• Creates backup of _config.yml before modifying",
                             size=12,
                             color=colors['secondary_text']
+                        ),
+                        ft.Text(
+                            f"• Copies {len(transcript_csv_files)} transcript CSV file(s) to _data/transcripts/" if transcript_csv_files else "",
+                            size=12,
+                            color=colors['secondary_text'],
+                            visible=bool(transcript_csv_files)
                         ),
                         
                         ft.Container(height=10),

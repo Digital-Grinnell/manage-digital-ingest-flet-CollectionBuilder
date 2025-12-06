@@ -76,6 +76,7 @@ class UpdateCSVView(BaseView):
         """
         Load CSV data into a pandas DataFrame.
         Skips comment rows (rows where first column starts with #).
+        Fixes illegal quoting by handling embedded quotes.
         
         Args:
             csv_path: Path to the CSV file
@@ -90,7 +91,16 @@ class UpdateCSVView(BaseView):
             for encoding in encodings:
                 try:
                     # Read all columns as strings to prevent scientific notation and type conversion
-                    self.csv_data = pd.read_csv(csv_path, encoding=encoding, dtype=str, keep_default_na=False)
+                    # Use quoting=csv.QUOTE_ALL to handle embedded quotes properly
+                    import csv
+                    self.csv_data = pd.read_csv(
+                        csv_path, 
+                        encoding=encoding, 
+                        dtype=str, 
+                        keep_default_na=False,
+                        quoting=csv.QUOTE_MINIMAL,
+                        on_bad_lines='warn'  # Warn but continue on bad lines
+                    )
                     
                     # Filter out comment rows (where first column starts with #)
                     if len(self.csv_data.columns) > 0:
@@ -103,6 +113,21 @@ class UpdateCSVView(BaseView):
                             self.csv_data = self.csv_data[~comment_mask]
                             # Reset index after filtering
                             self.csv_data = self.csv_data.reset_index(drop=True)
+                    
+                    # Fix embedded double quotes throughout the DataFrame
+                    quote_fixes = 0
+                    for col in self.csv_data.columns:
+                        for idx in self.csv_data.index:
+                            value = str(self.csv_data.at[idx, col])
+                            # Look for embedded double quotes (not empty values)
+                            if value and value != 'nan' and '"' in value:
+                                # Replace double quotes with single quotes
+                                fixed_value = value.replace('"', "'")
+                                self.csv_data.at[idx, col] = fixed_value
+                                quote_fixes += 1
+                    
+                    if quote_fixes > 0:
+                        self.logger.info(f"Fixed {quote_fixes} cell(s) with embedded double quotes during load")
                     
                     # Store a copy of the original data for comparison
                     self.csv_data_original = self.csv_data.copy()
@@ -122,14 +147,32 @@ class UpdateCSVView(BaseView):
     def save_csv_data(self):
         """
         Save the current CSV data back to file.
+        Fixes illegal quoting by replacing embedded double quotes with single quotes.
         
         Returns:
             bool: True if successful, False otherwise
         """
         try:
             if self.csv_data is not None and self.temp_csv_path:
+                # Fix illegal quoting: replace embedded double quotes with single quotes
+                quote_fixes = 0
+                for col in self.csv_data.columns:
+                    # Check each cell in the column
+                    for idx in self.csv_data.index:
+                        value = str(self.csv_data.at[idx, col])
+                        # Look for embedded double quotes (not empty values)
+                        if value and value != 'nan' and '"' in value:
+                            # Replace double quotes with single quotes
+                            fixed_value = value.replace('"', "'")
+                            self.csv_data.at[idx, col] = fixed_value
+                            quote_fixes += 1
+                            self.logger.info(f"Fixed illegal quote in row {idx}, column '{col}': changed {value.count('\"')} double quote(s) to single quote(s)")
+                
+                if quote_fixes > 0:
+                    self.logger.info(f"Fixed {quote_fixes} cell(s) with embedded double quotes")
+                
                 # Save without index and preserve all values as text (no scientific notation)
-                # Use quoting=csv.QUOTE_MINIMAL (0) to only quote when necessary
+                # Use quoting=csv.QUOTE_MINIMAL to only quote when necessary
                 import csv
                 self.csv_data.to_csv(
                     self.temp_csv_path, 
@@ -263,17 +306,33 @@ class UpdateCSVView(BaseView):
                             
                             self.logger.info(f"CollectionBuilder mode - selected_collection: '{selected_collection}'")
                             
+                            # Check if this is a media file
+                            file_ext = os.path.splitext(sanitized_filename)[1].lower()
+                            is_media_file = file_ext in ['.mp3', '.mp4', '.wav', '.m4a', '.flac', '.ogg', '.webm', '.mov', '.avi', '.mkv']
+                            
                             # Build derivative filenames for smalls and thumbs
                             # Remove extension from sanitized_filename and add _SMALL.jpg and _TN.jpg
                             base_name = os.path.splitext(sanitized_filename)[0]
-                            small_filename = f"{base_name}_SMALL.jpg"
-                            thumb_filename = f"{base_name}_TN.jpg"
+                            
+                            # For media files, use default Azure media placeholders
+                            if is_media_file:
+                                small_filename = "gc_media_SMALL.jpeg"
+                                thumb_filename = "gc_media_TN.jpeg"
+                                self.logger.info(f"Media file detected ({file_ext}) - using default Azure placeholders for derivatives")
+                            else:
+                                small_filename = f"{base_name}_SMALL.jpg"
+                                thumb_filename = f"{base_name}_TN.jpg"
                             
                             # Build blob URLs with collection prefix
                             if selected_collection:
                                 obj_url = f"{azure_base_url}/objs/{selected_collection}/{sanitized_filename}"
-                                small_url = f"{azure_base_url}/smalls/{selected_collection}/{small_filename}"
-                                thumb_url = f"{azure_base_url}/thumbs/{selected_collection}/{thumb_filename}"
+                                if is_media_file:
+                                    # Default media placeholders are not collection-specific
+                                    small_url = f"{azure_base_url}/smalls/{small_filename}"
+                                    thumb_url = f"{azure_base_url}/thumbs/{thumb_filename}"
+                                else:
+                                    small_url = f"{azure_base_url}/smalls/{selected_collection}/{small_filename}"
+                                    thumb_url = f"{azure_base_url}/thumbs/{selected_collection}/{thumb_filename}"
                             else:
                                 obj_url = f"{azure_base_url}/objs/{sanitized_filename}"
                                 small_url = f"{azure_base_url}/smalls/{small_filename}"

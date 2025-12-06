@@ -87,6 +87,8 @@ class DerivativesView(BaseView):
                 return False, error_msg
             
             # Process based on file type
+            is_media_file = ext.lower() in ['.mp3', '.mp4', '.wav', '.m4a', '.flac', '.ogg', '.webm', '.mov', '.avi', '.mkv']
+            
             if ext.lower() in ['.tiff', '.tif', '.jpg', '.jpeg', '.png', '.gif', '.bmp']:
                 success = generate_thumbnail(file_path, derivative_path, options)
                 if success:
@@ -103,6 +105,22 @@ class DerivativesView(BaseView):
                     return True, derivative_path
                 else:
                     error_msg = f"Failed to create PDF {derivative_type}: {derivative_path}"
+                    self.logger.error(error_msg)
+                    return False, error_msg
+            elif is_media_file:
+                # For media files, we can't generate derivatives - use default Azure placeholders
+                if derivative_type == 'thumbnail':
+                    default_url = "https://collectionbuilder.blob.core.windows.net/thumbs/gc_media_TN.jpeg"
+                elif derivative_type == 'small':
+                    default_url = "https://collectionbuilder.blob.core.windows.net/smalls/gc_media_SMALL.jpeg"
+                else:
+                    default_url = None
+                
+                if default_url:
+                    self.logger.info(f"Media file {ext} - using default Azure {derivative_type}: {default_url}")
+                    return True, default_url  # Return the URL instead of a file path
+                else:
+                    error_msg = f"No default available for media file type {ext} and derivative type {derivative_type}"
                     self.logger.error(error_msg)
                     return False, error_msg
             else:
@@ -366,7 +384,11 @@ class DerivativesView(BaseView):
             "Create Derivatives",
             icon=ft.Icons.AUTO_FIX_HIGH,
             on_click=on_create_derivatives_click,
-            disabled=(total_files == 0)
+            disabled=(total_files == 0),
+            style=ft.ButtonStyle(
+                color=ft.Colors.WHITE,
+                bgcolor=ft.Colors.GREEN_600
+            )
         )
         
         clear_button = ft.ElevatedButton(

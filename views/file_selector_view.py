@@ -78,6 +78,60 @@ class FileSelectorView(BaseView):
         # Rejoin the path
         return os.path.join(directory, sanitized_filename) if directory else sanitized_filename
     
+    def copy_transcript_files_to_temp_directory(self, transcript_paths, temp_dir):
+        """
+        Create symbolic links for transcript CSV files in TRANSCRIPTS subdirectory.
+        
+        Args:
+            transcript_paths: List of transcript CSV file paths to link
+            temp_dir: The temporary directory base path
+            
+        Returns:
+            list: List of created symbolic link paths in TRANSCRIPTS directory
+        """
+        import os
+        
+        try:
+            # Create TRANSCRIPTS subdirectory
+            transcripts_dir = os.path.join(temp_dir, "TRANSCRIPTS")
+            os.makedirs(transcripts_dir, exist_ok=True)
+            self.logger.info(f"Using TRANSCRIPTS directory: {transcripts_dir}")
+            
+            transcript_temp_files = []
+            
+            for source_path in transcript_paths:
+                if not os.path.exists(source_path):
+                    self.logger.warning(f"Transcript file not found: {source_path}")
+                    continue
+                
+                # Get the filename
+                filename = os.path.basename(source_path)
+                
+                # Create the destination path in TRANSCRIPTS subdirectory
+                dest_path = os.path.join(transcripts_dir, filename)
+                
+                # Remove existing link/file if present
+                if os.path.exists(dest_path) or os.path.islink(dest_path):
+                    os.remove(dest_path)
+                
+                # Create symbolic link
+                try:
+                    os.symlink(source_path, dest_path)
+                    transcript_temp_files.append(dest_path)
+                    self.logger.info(f"Created transcript link: {filename}")
+                except Exception as link_error:
+                    self.logger.error(f"Failed to create transcript link for {filename}: {link_error}")
+            
+            # Store transcript directory in session
+            self.page.session.set("temp_transcripts_directory", transcripts_dir)
+            
+            self.logger.info(f"Successfully created {len(transcript_temp_files)} transcript symbolic links in TRANSCRIPTS/ directory")
+            return transcript_temp_files
+            
+        except Exception as e:
+            self.logger.error(f"Error creating transcript links: {e}")
+            return []
+    
     def copy_files_to_temp_directory(self, file_paths):
         """
         Create symbolic links with sanitized names in a temporary directory that reference the original files.
@@ -1772,11 +1826,11 @@ class CSVSelectorView(FileSelectorView):
                 self.logger.info(f"Auto-workflow: Creating symbolic links for {len(full_path_files)} matched files")
                 temp_files, temp_file_info, temp_dir = self.copy_files_to_temp_directory(full_path_files)
                 
-                # Also create links for transcript CSV files
+                # Create links for transcript CSV files in separate TRANSCRIPTS directory
                 if transcript_csv_files:
                     self.logger.info(f"Auto-workflow: Creating symbolic links for {len(transcript_csv_files)} transcript CSV files")
-                    transcript_temp_files, _, _ = self.copy_files_to_temp_directory(transcript_csv_files)
-                    self.logger.info(f"Created links for {len(transcript_temp_files)} transcript CSV files in {temp_dir}")
+                    transcript_temp_files = self.copy_transcript_files_to_temp_directory(transcript_csv_files, temp_dir)
+                    self.logger.info(f"Created links for {len(transcript_temp_files)} transcript CSV files in {temp_dir}/TRANSCRIPTS")
                 
                 # Update selected_file_paths to point to temp files so derivatives are created there
                 self.page.session.set("selected_file_paths", temp_files)
@@ -2223,11 +2277,11 @@ class CSVSelectorView(FileSelectorView):
         self.logger.info(f"Creating symbolic links for {len(full_path_files)} matched files in temporary directory...")
         temp_files, temp_file_info, temp_dir = self.copy_files_to_temp_directory(full_path_files)
         
-        # Also create links for transcript CSV files
+        # Create links for transcript CSV files in separate TRANSCRIPTS directory
         if transcript_csv_files:
             self.logger.info(f"Creating symbolic links for {len(transcript_csv_files)} transcript CSV files...")
-            transcript_temp_files, _, _ = self.copy_files_to_temp_directory(transcript_csv_files)
-            self.logger.info(f"Created links for {len(transcript_temp_files)} transcript CSV files in {temp_dir}")
+            transcript_temp_files = self.copy_transcript_files_to_temp_directory(transcript_csv_files, temp_dir)
+            self.logger.info(f"Created links for {len(transcript_temp_files)} transcript CSV files in {temp_dir}/TRANSCRIPTS")
         
         # Update selected_file_paths to point to temp files so derivatives are created there
         if temp_files:

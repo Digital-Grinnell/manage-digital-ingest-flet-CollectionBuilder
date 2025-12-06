@@ -125,13 +125,25 @@ class StorageView(BaseView):
                 self.page.update()
                 return
             
+            # Get transcript CSV files from session to exclude from upload
+            transcript_csv_files = self.page.session.get("transcript_csv_files") or []
+            transcript_csv_basenames = {os.path.basename(f) for f in transcript_csv_files}
+            
             # Get list of files to upload from OBJS, SMALL, and TN directories
             files_to_upload = []
+            skipped_transcripts = []
             
-            # Add files from OBJS directory
+            # Add files from OBJS directory (excluding transcript CSVs)
             for root, dirs, files in os.walk(objs_dir):
                 for file in files:
                     file_path = os.path.join(root, file)
+                    
+                    # Skip transcript CSV files - they'll be handled by deployment script
+                    if file in transcript_csv_basenames:
+                        skipped_transcripts.append(file_path)
+                        self.logger.info(f"Skipping transcript CSV from upload: {file}")
+                        continue
+                    
                     # Create relative path for blob name
                     relative_path = os.path.relpath(file_path, objs_dir)
                     files_to_upload.append((file_path, relative_path))
@@ -228,9 +240,14 @@ class StorageView(BaseView):
                 status_parts.append(f"⏭️ Skipped: {skipped_count}")
             if failed_count > 0:
                 status_parts.append(f"❌ Failed: {failed_count}")
+            if len(skipped_transcripts) > 0:
+                status_parts.append(f"📝 Transcripts excluded: {len(skipped_transcripts)}")
             
             total_processed = uploaded_count + skipped_count + failed_count
             self.upload_status.value = f"{' | '.join(status_parts)} (Total: {total_processed}/{total_files})"
+            
+            if len(skipped_transcripts) > 0:
+                self.upload_status.value += f"\n💡 Transcript CSVs will be copied by deployment script to _data/transcripts/"
             
             # Set color based on results
             if failed_count > 0:
@@ -270,7 +287,7 @@ class StorageView(BaseView):
             on_click=self.upload_files_to_azure,
             style=ft.ButtonStyle(
                 color=ft.Colors.WHITE,
-                bgcolor=ft.Colors.BLUE
+                bgcolor=ft.Colors.GREEN_600
             )
         )
         
