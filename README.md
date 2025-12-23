@@ -64,7 +64,11 @@ This CollectionBuilder-specific version of Manage Digital Ingest helps you:
   - Enforces UTF-8 encoding (no BOM)
   - Uses QUOTE_MINIMAL quoting strategy
 - **Transcript Workflow**: 
-  - Auto-corrects transcript CSV files (encoding + apostrophes)
+  - **Auto-fixes transcript CSV files** at the start of Update CSV operations
+  - Converts various formats (Whisper, Otter.ai, etc.) to CollectionBuilder standard
+  - Standardizes headers to `timestamp,speaker,words`
+  - Handles different delimiters (comma/semicolon) and encodings
+  - Auto-corrects encoding and apostrophes
   - Auto-populates `object_transcript` column
   - Copies corrected transcript CSVs to deployment package
 - **Deployment Strategy**:
@@ -84,6 +88,9 @@ This CollectionBuilder-specific version of Manage Digital Ingest helps you:
    - Review matches and create symbolic links
 3. **Create Derivatives**: Generate CB thumbnails (_TN.jpg) and small images (_SMALL.jpg)
 4. **Update CSV**: Apply CollectionBuilder-specific metadata updates
+   - **Automatically fixes transcript CSV files** (if detected) to standard format
+   - Converts headers like `Timestamp,Speaker,Transcript` to `timestamp,speaker,words`
+   - Handles semicolon vs comma delimiters and various encoding issues
    - Preserves comment rows (lines starting with #)
    - Populates `object_transcript` column for transcript records
    - Converts straight apostrophes to curly apostrophes for CSV compatibility

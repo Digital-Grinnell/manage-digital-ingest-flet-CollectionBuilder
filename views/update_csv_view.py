@@ -12,6 +12,7 @@ import shutil
 import pandas as pd
 from datetime import datetime
 import utils
+import transcript_fixer
 
 
 class UpdateCSVView(BaseView):
@@ -239,14 +240,68 @@ class UpdateCSVView(BaseView):
             self.logger.error(f"Error updating cell: {e}")
             return False
     
+    def auto_fix_transcripts(self):
+        """
+        Automatically fix transcript CSV files if any are detected in the session.
+        This ensures transcript files conform to CollectionBuilder format (timestamp,speaker,words).
+        """
+        try:
+            # Check if there are transcript files in the session
+            temp_transcripts_dir = self.page.session.get("temp_transcripts_directory")
+            transcript_csv_files = self.page.session.get("transcript_csv_files") or []
+            
+            if not temp_transcripts_dir or not transcript_csv_files:
+                self.logger.info("No transcript files detected - skipping auto-fix")
+                return
+            
+            if not os.path.exists(temp_transcripts_dir):
+                self.logger.warning(f"Transcript directory not found: {temp_transcripts_dir}")
+                return
+            
+            self.logger.info(f"Auto-fixing {len(transcript_csv_files)} transcript CSV file(s)")
+            
+            # Fix all transcripts in the directory
+            results = transcript_fixer.fix_transcript_directory(temp_transcripts_dir, self.logger)
+            
+            if results['success']:
+                msg = f"✓ Auto-fixed {results['fixed']} transcript file(s)"
+                self.logger.info(msg)
+                if results['fixed'] > 0:
+                    # Show success message to user
+                    self.page.snack_bar = ft.SnackBar(
+                        content=ft.Text(msg),
+                        bgcolor=ft.Colors.GREEN_700
+                    )
+                    self.page.snack_bar.open = True
+                    self.page.update()
+            else:
+                msg = f"⚠ Transcript auto-fix had issues: {results['message']}"
+                self.logger.warning(msg)
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(msg),
+                    bgcolor=ft.Colors.ORANGE_600
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+                
+        except Exception as e:
+            self.logger.error(f"Error during transcript auto-fix: {e}")
+            # Don't fail the entire update process if transcript fixing fails
+            import traceback
+            traceback.print_exc()
+    
     def apply_all_updates(self, e):
         """
         Combined function that:
-        1. Applies matched filenames to existing rows
-        2. Appends a new row for the CSV file itself
-        3. Populates dginfo field for all rows with temp CSV filename
+        1. Auto-fixes transcript CSV files (if any detected)
+        2. Applies matched filenames to existing rows
+        3. Appends a new row for the CSV file itself
+        4. Populates dginfo field for all rows with temp CSV filename
         """
         try:
+            # Step 0: Auto-fix transcript CSV files if detected
+            self.auto_fix_transcripts()
+            
             # Get session data
             temp_file_info = self.page.session.get("temp_file_info") or []
             csv_filenames_for_matched = self.page.session.get("csv_filenames_for_matched") or []
