@@ -237,3 +237,7 @@ Temporary Items
 # Application-specific
 storage/
 mdi.log
+
+# Distribution artifacts
+*.dmg
+*.pkg
