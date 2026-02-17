@@ -3,7 +3,7 @@ name = "MDI"
 version = "1.0.0"
 description = "MDI - Manage Digital Ingest for CollectionBuilder metadata and derivative management"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     { name = "Digital Grinnell", email = "digital@grinnell.edu" }
 ]
