@@ -73,12 +73,12 @@ Done!
 
 ### Example 2: Process a directory of transcripts
 ```bash
-python3 utilities/fix_transcripts.py storage/temp/transcripts/
+python3 utilities/fix_transcripts.py ~/Downloads/MDI_temp/transcripts/
 ```
 
 Output:
 ```
-Processing directory: storage/temp/transcripts/
+Processing directory: ~/Downloads/MDI_temp/transcripts/
 Processing interview_001.csv...
   ✓ Fixed interview_001.csv (203 rows)
 Processing interview_002.csv...

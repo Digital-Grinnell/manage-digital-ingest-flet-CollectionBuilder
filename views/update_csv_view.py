@@ -46,8 +46,10 @@ class UpdateCSVView(BaseView):
             # Get temp directory from session
             temp_dir = self.page.session.get("temp_directory")
             if not temp_dir:
-                # Create a new temp directory if one doesn't exist
-                temp_dir = os.path.join("storage", "temp", f"csv_update_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+                # Create a new temp directory in ~/Downloads/MDI_temp to avoid path issues
+                temp_base_dir = os.path.expanduser("~/Downloads/MDI_temp")
+                os.makedirs(temp_base_dir, exist_ok=True)
+                temp_dir = os.path.join(temp_base_dir, f"csv_update_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
                 os.makedirs(temp_dir, exist_ok=True)
                 self.page.session.set("temp_directory", temp_dir)
             

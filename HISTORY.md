@@ -7,6 +7,27 @@ This document tracks the development history of the manage-digital-ingest-flet-C
 
 ---
 
+## February 2026 - Temp Directory Relocation
+
+### Fixed Path Issue with Spaces
+**Date**: February 17, 2026
+
+**Problem**: Application failed when project directory path contained spaces because temp files were created in `storage/temp/` subdirectory.
+
+**Solution**: Relocated all temporary file operations to `~/Downloads/MDI_temp/`
+
+**Files Modified**:
+- `views/file_selector_view.py` - Updated `copy_files_to_temp_directory()` method (2 locations)
+- `views/update_csv_view.py` - Updated CSV temp directory creation
+- `utilities/README.md` - Updated example paths
+
+**Benefits**:
+- Eliminates path-with-spaces errors
+- User-accessible temp location in Downloads folder
+- Cleaner separation of app and working files
+
+---
+
 ## November 2025 - CollectionBuilder Fork and Specialization
 
 ### Alma Removal and CollectionBuilder Focus

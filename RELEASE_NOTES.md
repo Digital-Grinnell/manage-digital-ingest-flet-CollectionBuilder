@@ -1,4 +1,4 @@
-# MDI v1.0.0 - macOS Application Release
+# MDI v1.0.1 - macOS Application Release
 
 ## 📦 Easy Installation for macOS Users
 
@@ -19,7 +19,15 @@ macOS will show a security warning since this app isn't code-signed:
 3. Click **Open Anyway**
 4. Confirm by clicking **Open**
 
-## ✨ What's New
+## ✨ What's New in v1.0.1
+
+### Bug Fixes
+- **Fixed Temp Directory Path Issue** - Moved temporary files from project directory to `~/Downloads/MDI_temp`
+  - Resolves errors caused by spaces in project directory paths
+  - Temp files now stored in user-accessible location (Downloads folder)
+  - Automatic cleanup remains the same
+
+## ✨ What's New in v1.0.0
 
 ### Features
 - **Automatic Transcript Fixing** - Smart handling of CSV transcript data

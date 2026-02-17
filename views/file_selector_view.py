@@ -204,8 +204,8 @@ class FileSelectorView(BaseView):
             temp_dir = self.page.session.get("temp_directory")
             
             if not temp_dir or not os.path.exists(temp_dir):
-                # Create base temp directory if it doesn't exist
-                temp_base_dir = os.path.join(os.getcwd(), "storage", "temp")
+                # Create base temp directory in ~/Downloads/MDI_temp to avoid path issues
+                temp_base_dir = os.path.expanduser("~/Downloads/MDI_temp")
                 os.makedirs(temp_base_dir, exist_ok=True)
                 
                 # Create a unique subdirectory for this session
@@ -767,8 +767,8 @@ class CSVSelectorView(FileSelectorView):
             temp_dir = self.page.session.get("temp_directory")
             
             if not temp_dir or not os.path.exists(temp_dir):
-                # Create a new temp directory structure
-                temp_base_dir = os.path.join(os.getcwd(), "storage", "temp")
+                # Create a new temp directory structure in ~/Downloads/MDI_temp to avoid path issues
+                temp_base_dir = os.path.expanduser("~/Downloads/MDI_temp")
                 os.makedirs(temp_base_dir, exist_ok=True)
                 
                 # Create a unique subdirectory for this session
