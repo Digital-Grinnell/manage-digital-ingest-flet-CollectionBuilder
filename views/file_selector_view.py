@@ -1951,6 +1951,11 @@ class CSVSelectorView(FileSelectorView):
             combined_results = {}
             transcript_csv_files = []  # Track transcript CSV files found
             
+            # Get matching threshold from settings (100 for exact, 90 for fuzzy)
+            exact_matching = self.page.session.get("exact_matching", False)
+            threshold = 100 if exact_matching else 90
+            self.logger.info(f"Using fuzzy match threshold: {threshold}% ({'exact' if exact_matching else 'fuzzy'} matching)")
+            
             # Search each directory and keep best matches
             for search_dir in search_dirs:
                 self.logger.info(f"Searching in directory: {search_dir}")
@@ -1959,7 +1964,7 @@ class CSVSelectorView(FileSelectorView):
                 results = utils.perform_fuzzy_search_batch(
                     search_dir, 
                     selected_files,
-                    threshold=90,
+                    threshold=threshold,
                     progress_callback=update_progress,
                     cancel_check=check_cancel,
                     transcript_info=transcript_info  # Pass transcript info
@@ -2188,11 +2193,16 @@ class CSVSelectorView(FileSelectorView):
             # Get transcript info from session
             transcript_info = self.page.session.get("transcript_info") or {}
             
+            # Get matching threshold from settings (100 for exact, 90 for fuzzy)
+            exact_matching = self.page.session.get("exact_matching", False)
+            threshold = 100 if exact_matching else 90
+            self.logger.info(f"Using fuzzy match threshold: {threshold}% ({'exact' if exact_matching else 'fuzzy'} matching)")
+            
             # Perform the fuzzy search with progress tracking and cancellation support
             results = utils.perform_fuzzy_search_batch(
                 search_dir, 
                 selected_files,
-                threshold=90,
+                threshold=threshold,
                 progress_callback=update_progress,
                 cancel_check=check_cancel,
                 transcript_info=transcript_info  # Pass transcript info

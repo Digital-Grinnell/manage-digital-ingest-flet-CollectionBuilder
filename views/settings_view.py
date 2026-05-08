@@ -140,6 +140,10 @@ class SettingsView(BaseView):
         self.page.session.set("selected_mode", current_mode)
         self.save_persistent_settings({"selected_mode": current_mode})
         
+        # Get exact matching preference (default is False = 90% fuzzy matching)
+        exact_matching = persistent_settings.get("exact_matching", False)
+        self.page.session.set("exact_matching", exact_matching)
+        
         # Get current selections from session or fall back to persistent settings
         current_file_option = self.page.session.get("selected_file_option") or persistent_settings.get("selected_file_option")
         current_storage = self.page.session.get("selected_storage") or persistent_settings.get("selected_storage")
@@ -259,6 +263,46 @@ class SettingsView(BaseView):
             bgcolor=colors['container_bg']
         )
         
+        # Exact matching checkbox handler
+        def on_exact_matching_change(e):
+            """Handle exact matching checkbox changes"""
+            exact_matching = e.control.value
+            self.page.session.set("exact_matching", exact_matching)
+            self.save_persistent_settings({"exact_matching": exact_matching})
+            threshold = 100 if exact_matching else 90
+            self.logger.info(f"Exact matching {'enabled' if exact_matching else 'disabled'} - threshold set to {threshold}%")
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"Fuzzy match threshold: {threshold}% ({'exact' if exact_matching else 'fuzzy'} matching)"),
+                bgcolor=ft.Colors.GREEN_600
+            )
+            self.page.snack_bar.open = True
+            self.page.update()
+        
+        # Fuzzy matching settings container
+        fuzzy_matching_container = ft.Container(
+            content=ft.Row([
+                ft.Icon(
+                    name=ft.Icons.SEARCH,
+                    size=20,
+                    color=colors['container_text']
+                ),
+                ft.Checkbox(
+                    label="Require Exact Filename Matches (100%)",
+                    value=exact_matching,
+                    on_change=on_exact_matching_change
+                ),
+                ft.Tooltip(
+                    message="When checked, filenames must match exactly. When unchecked, 90% similarity is allowed (fuzzy matching).",
+                    content=ft.Icon(ft.Icons.INFO_OUTLINE, size=16, color=colors['secondary_text'])
+                )
+            ], alignment=ft.MainAxisAlignment.START, spacing=8),
+            padding=ft.padding.all(8),
+            border=ft.border.all(1, colors['border']),
+            border_radius=10,
+            margin=ft.margin.symmetric(vertical=4),
+            bgcolor=colors['container_bg']
+        )
+        
         # For CollectionBuilder app: Display mode as read-only text instead of dropdown
         mode_settings_container = ft.Container(
             content=ft.Column([
@@ -315,6 +359,7 @@ class SettingsView(BaseView):
             storage_settings_container,
             collection_settings_container,
             ft.Divider(height=15, color=colors['divider']),
+            fuzzy_matching_container,
             theme_settings_container,
             ft.Divider(height=15, color=colors['divider']),
             ft.Container(
